@@ -56,7 +56,7 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
     }
     console.log("HTML response received", html)
     const $ = cheerio.load(html)
-    const talks: Talk[] = []
+    const rawTalks: Talk[] = []
 
     // グリッド要素が見つからない場合のフォールバックセレクタ
     const gridSelector = $(".grid.gap-1.mt-4").length > 0 
@@ -95,11 +95,22 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
                 trackName = trackElement.text().trim()
               }
 
-              // トークタイトルを取得
-              const titleElement = $(cell).find("a p")
+              // トークタイトルとURLを取得
+              const titleAnchor = $(cell).find("a")
+              const titleElement = titleAnchor.find("p")
               const talkTitle = titleElement.length > 0 
                 ? titleElement.text().trim() 
                 : $(cell).find(".text-center").text().trim() // タイトルがない場合（休憩など）
+              
+              // リンクURLを取得
+              let talkUrl: string | undefined = undefined
+              if (titleAnchor.length > 0) {
+                talkUrl = titleAnchor.attr("href")
+                // 相対URLの場合は絶対URLに変換
+                if (talkUrl && !talkUrl.startsWith("http")) {
+                  talkUrl = `https://2025.tskaigi.org${talkUrl.startsWith("/") ? "" : "/"}${talkUrl}`
+                }
+              }
 
               // 空のセルやヘッダーをスキップ
               if (
@@ -157,7 +168,11 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
 
               // 話者画像のURLを取得
               const speakerImageElement = $(cell).find(".flex.items-center.gap-2 img")
-              const speakerImage = speakerImageElement.length > 0 ? speakerImageElement.attr("src") : undefined
+              let speakerImage = speakerImageElement.length > 0 ? speakerImageElement.attr("src") : undefined
+              // 相対URLの場合は絶対URLに変換
+              if (speakerImage && !speakerImage.startsWith("http")) {
+                speakerImage = `https://2025.tskaigi.org${speakerImage.startsWith("/") ? "" : "/"}${speakerImage}`
+              }
 
               // トークIDを生成
               const id = `day${day}-${gridIndex}-${cellIndex}`
@@ -165,7 +180,7 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
               // dayの型を確認
               const dayValue: "day1" | "day2" = day === "1" ? "day1" : "day2"
 
-              talks.push({
+              rawTalks.push({
                 id,
                 day: dayValue,
                 title: talkTitle,
@@ -175,6 +190,7 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
                 track: trackName || undefined,
                 type: talkType,
                 hashtag: hashtag || undefined,
+                url: talkUrl,
               })
             } catch (cellError) {
               console.error(`Error processing cell at index ${cellIndex}:`, cellError)
@@ -187,7 +203,53 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
       }
     })
 
-    return talks
+    // 親トークと子トークの関係を構築
+    const processedTalks: Talk[] = []
+    
+    // 時間帯とトークタイプでグループ化
+    const talkGroups: { [key: string]: Talk[] } = {}
+    
+    rawTalks.forEach(talk => {
+      const groupKey = `${talk.time}-${talk.type}`
+      if (!talkGroups[groupKey]) {
+        talkGroups[groupKey] = []
+      }
+      talkGroups[groupKey].push(talk)
+    })
+    
+    // 各グループを処理
+    Object.values(talkGroups).forEach(group => {
+      console.log("Processing group:", group)
+      // グループ内のトークが1つだけの場合はそのまま追加
+      if (group.length === 1) {
+        processedTalks.push(group[0])
+        return
+      }
+      
+      // グループ内のトークが複数ある場合
+      // 特定のトークタイプ（スポンサーLTなど）の場合は親子関係を構築
+      if (
+        group[0].type === "スポンサーLT" || 
+        // 必要に応じて他のタイプも追加
+        (group.length > 1 && group.every(t => t.track === group[0].track))
+      ) {
+        const parentTalk = { ...group[0] }
+        const childTalks = group.slice(1).map(talk => ({
+          ...talk,
+          parentId: parentTalk.id
+        }))
+        
+        parentTalk.childTalks = childTalks
+        processedTalks.push(parentTalk)
+      } else {
+        // それ以外の場合は個別のトークとして追加
+        group.forEach(talk => {
+          processedTalks.push(talk)
+        })
+      }
+    })
+
+    return processedTalks
   } catch (error) {
     console.error("Error in fetchTalksForDay:", error)
     // エラーが発生した場合は空の配列を返す

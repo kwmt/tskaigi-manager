@@ -8,6 +8,11 @@ export interface Talk {
   track?: string
   type: "セッション" | "招待講演" | "オープニング" | "クローズ" | "休憩" | "ランチ配布" | "スポンサーLT"
   hashtag?: string
+  url?: string
+  // 追加：子トークを含むためのプロパティ
+  childTalks?: Talk[]
+  // 追加：親トークのIDを参照するためのプロパティ（オプション）
+  parentId?: string
 }
 
 export const day1Talks: Talk[] = [
