@@ -28,8 +28,9 @@ export function TalksGrid({ day }: TalksGridProps) {
         } else if (day === "day2" && data.day2.length > 0) {
           setTalks(data.day2)
         } else {
+          throw new Error("No talks found for the selected day.");
           // フォールバック: スクレイピングに失敗した場合はハードコードされたデータを使用
-          setTalks(day === "day1" ? day1Talks : day2Talks)
+          // setTalks(day === "day1" ? day1Talks : day2Talks)
         }
       } catch (err) {
         console.error("Failed to fetch talks:", err)
