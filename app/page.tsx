@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="container mx-auto py-8 px-4">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-center mb-2">TSKaigi Bookmarker</h1>
+        <h1 className="text-3xl font-bold text-center mb-2"><a href="https://2025.tskaigi.org/talks" target="_blank" rel="noopener noreferrer">TSKaigi タイムテーブル</a> Bookmarker</h1>
         <p className="text-center text-muted-foreground">お気に入りのトークをブックマークして、日別に管理できます</p>
       </header>
 
