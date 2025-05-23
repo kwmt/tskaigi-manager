@@ -1,6 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TalksGrid } from "@/components/talks-grid"
-import { BookmarkedTalks } from "@/components/bookmarked-talks"
 
 export default function Home() {
   return (
@@ -11,23 +10,15 @@ export default function Home() {
       </header>
 
       <Tabs defaultValue="day1" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
           <TabsTrigger value="day1">Day 1 (5/23)</TabsTrigger>
           <TabsTrigger value="day2">Day 2 (5/24)</TabsTrigger>
-          <TabsTrigger value="bookmarked-day1">ブックマーク (Day 1)</TabsTrigger>
-          <TabsTrigger value="bookmarked-day2">ブックマーク (Day 2)</TabsTrigger>
         </TabsList>
         <TabsContent value="day1">
           <TalksGrid day="day1" />
         </TabsContent>
         <TabsContent value="day2">
           <TalksGrid day="day2" />
-        </TabsContent>
-        <TabsContent value="bookmarked-day1">
-          <BookmarkedTalks day="day1" />
-        </TabsContent>
-        <TabsContent value="bookmarked-day2">
-          <BookmarkedTalks day="day2" />
         </TabsContent>
       </Tabs>
     </div>
