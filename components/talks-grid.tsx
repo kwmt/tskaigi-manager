@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import { useCallback } from "react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,12 +15,52 @@ interface TalksGridProps {
   day: "day1" | "day2"
 }
 
+// トークが現在進行中かどうかを判断する関数
+const isCurrentlyHappening = (timeString: string, currentTime: Date = new Date()): boolean => {
+  // 現在の時間を使用
+  const now = currentTime;
+  
+  // timeStringは "10:50 ~ 11:00" のような形式
+  const [startTimeStr, endTimeStr] = timeString.split("~").map(t => t.trim());
+  
+  // 開始時間と終了時間をパース
+  const [startHour, startMinute] = startTimeStr.split(":").map(Number);
+  const [endHour, endMinute] = endTimeStr.split(":").map(Number);
+  
+  // 現在の時間を時間と分に分解
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // 現在時刻を分単位に変換
+  const currentTimeInMinutes = currentHour * 60 + currentMinute;
+  // 開始時間を分単位に変換
+  const startTimeInMinutes = startHour * 60 + startMinute;
+  // 終了時間を分単位に変換
+  const endTimeInMinutes = endHour * 60 + endMinute;
+  
+  // 現在時刻が開始時間と終了時間の間にあるかどうかを判断
+  return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
+};
+
 export function TalksGrid({ day }: TalksGridProps) {
   const [talks, setTalks] = useState<Talk[]>(day === "day1" ? day1Talks : day2Talks)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { bookmarks, toggleBookmark, isBookmarked } = useBookmarks()
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false)
+  // 現在時刻の状態を追加（表示を更新するため）
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // 1分ごとに現在時刻を更新するためのeffect
+  useEffect(() => {
+    // 1分ごとに更新するタイマーを設定
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // 60秒 = 1分
+    
+    // クリーンアップ関数
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function loadTalks() {
@@ -119,7 +160,10 @@ export function TalksGrid({ day }: TalksGridProps) {
                   >
                     {talk.type}
                   </Badge>
-                  <div className="text-sm text-muted-foreground mt-1">{talk.time}</div>
+                  <div className={`text-sm mt-1 ${isCurrentlyHappening(talk.time, currentTime) ? "text-green-600 font-bold" : "text-muted-foreground"}`}>
+                    {talk.time}
+                    {isCurrentlyHappening(talk.time, currentTime) && <span className="ml-2 inline-block animate-pulse">●</span>}
+                  </div>
                 </div>
                 <Button
                   variant="ghost"
