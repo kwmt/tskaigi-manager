@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio"
 import type { Talk } from "@/lib/talks-data"
-import { chromium } from 'playwright-core'
+import { chromium, LaunchOptions } from 'playwright-core'
 import chromiumPath from '@sparticuz/chromium'
 
 export async function GET() {
@@ -26,11 +26,15 @@ export async function GET() {
 
 // Playwrightを使用してHTMLを取得する関数
 export async function fetchHtml(url: string): Promise<string> {
-  const browser = await chromium.launch({
-    headless: true, // ヘッドレスモードで実行
-    args: chromiumPath.args, 
-    executablePath: await chromiumPath.executablePath()
-  });
+  let options: LaunchOptions = {
+    headless: true
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    options["args"] = chromiumPath.args
+    options["executablePath"] = await chromiumPath.executablePath()
+  }
+  const browser = await chromium.launch(options);
   
   try {
     const context = await browser.newContext({
