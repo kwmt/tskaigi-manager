@@ -5,7 +5,6 @@ import chromiumPath from '@sparticuz/chromium'
 
 export async function GET() {
   try {
-    console.log("Fetching talks data...")
     // Day 1のデータを取得
     const day1Data = await fetchTalksForDay("1")
     // Day 2のデータを取得
@@ -239,7 +238,6 @@ export async function fetchHtml(url: string): Promise<string> {
     
     // ページのHTMLを取得
     const html = await page.content();
-    console.log("HTML content fetched successfully", html);
     return html;
   } finally {
     await browser.close(); // ブラウザを必ず閉じる
@@ -254,7 +252,7 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
       console.error("Empty HTML response received")
       return []
     }
-    console.log("HTML response received", html)
+  
     const $ = cheerio.load(html)
     const rawTalks: Talk[] = []
 

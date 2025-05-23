@@ -13,12 +13,10 @@ interface TalksCache {
 }
 
 export async function fetchTalks(): Promise<{ day1: Talk[]; day2: Talk[] }> {
-  console.log("Fetching talks data...")
   // クライアントサイドでのみローカルストレージを使用
   if (typeof window !== "undefined") {
     // キャッシュを確認
     const cachedData = getCachedTalks()
-    console.log("Cached talks data:", cachedData)
     
     // キャッシュが有効な場合はキャッシュを返す
     if (cachedData && cachedData.day1.length > 0 && cachedData.day2.length > 0) {
