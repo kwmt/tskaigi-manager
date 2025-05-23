@@ -6,7 +6,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Bookmark, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Bookmark, Loader2, AlertCircle, RefreshCw, Settings } from "lucide-react"
 import { day1Talks, day2Talks, type Talk } from "@/lib/talks-data"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import { fetchTalks, clearTalksCache } from "@/lib/api"
@@ -145,26 +151,40 @@ export function TalksGrid({ day }: TalksGridProps) {
   if (showBookmarksOnly && filteredTalks.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearCache}
-            className="flex items-center gap-1"
-            disabled={isClearingCache}
-          >
-            <RefreshCw size={16} />
-            <span>キャッシュをクリア</span>
-          </Button>
-          
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="show-bookmarks"
-              checked={showBookmarksOnly}
-              onCheckedChange={setShowBookmarksOnly}
-            />
-            <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
-          </div>
+        <div className="flex items-center justify-start">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+                disabled={isClearingCache}
+              >
+                <Settings size={16} />
+                <span>メニュー</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem 
+                onClick={handleClearCache}
+                disabled={isClearingCache}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw size={16} />
+                <span>キャッシュをクリア</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* 固定位置の「ブックマークのみ表示」ボタン */}
+        <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-background/95 backdrop-blur-sm p-3 rounded-lg shadow-md border">
+          <Switch
+            id="show-bookmarks-empty-fixed"
+            checked={showBookmarksOnly}
+            onCheckedChange={setShowBookmarksOnly}
+          />
+          <Label htmlFor="show-bookmarks-empty-fixed">ブックマークのみ表示</Label>
         </div>
         
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -190,26 +210,40 @@ export function TalksGrid({ day }: TalksGridProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleClearCache}
-          className="flex items-center gap-1"
-          disabled={isClearingCache}
-        >
-          <RefreshCw size={16} />
-          <span>キャッシュをクリア</span>
-        </Button>
-        
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="show-bookmarks"
-            checked={showBookmarksOnly}
-            onCheckedChange={setShowBookmarksOnly}
-          />
-          <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
-        </div>
+      <div className="flex items-center justify-start">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
+              disabled={isClearingCache}
+            >
+              <Settings size={16} />
+              <span>メニュー</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem 
+              onClick={handleClearCache}
+              disabled={isClearingCache}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              <span>キャッシュをクリア</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* 固定位置の「ブックマークのみ表示」ボタン */}
+      <div className="fixed bottom-4 right-4 z-50 flex items-center space-x-2 bg-background/95 backdrop-blur-sm p-3 rounded-lg shadow-md border">
+        <Switch
+          id="show-bookmarks-fixed"
+          checked={showBookmarksOnly}
+          onCheckedChange={setShowBookmarksOnly}
+        />
+        <Label htmlFor="show-bookmarks-fixed">ブックマークのみ表示</Label>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
