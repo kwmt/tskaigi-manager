@@ -1,7 +1,7 @@
 import type { Talk } from "./talks-data"
 
 // キャッシュの有効期限（ミリ秒）
-const CACHE_EXPIRY = 3600 * 1000 // 1時間
+const CACHE_EXPIRY = 0 //3600 * 1000 // 1時間
 
 // キャッシュのキー
 const TALKS_CACHE_KEY = "tskaigi-talks-cache"

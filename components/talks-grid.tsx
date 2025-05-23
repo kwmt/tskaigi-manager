@@ -5,11 +5,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Bookmark, Loader2, ChevronDown, AlertCircle } from "lucide-react"
+import { Bookmark, Loader2, AlertCircle } from "lucide-react"
 import { day1Talks, day2Talks, type Talk } from "@/lib/talks-data"
 import { useBookmarks } from "@/hooks/use-bookmarks"
 import { fetchTalks } from "@/lib/api"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 interface TalksGridProps {
   day: "day1" | "day2"
@@ -167,75 +166,6 @@ export function TalksGrid({ day }: TalksGridProps) {
                     </div>
                   )}
                 </div>
-                
-                {/* 子トークがある場合はアコーディオンで表示 */}
-                {talk.childTalks && talk.childTalks.length > 0 && (
-                  <div className="mt-3">
-                    <Accordion type="single" collapsible className="border-t pt-2">
-                      <AccordionItem value="child-talks" className="border-b-0">
-                        <AccordionTrigger className="py-2 text-sm font-medium">
-                          関連トーク ({talk.childTalks.length})
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-3">
-                            {talk.childTalks.map((childTalk) => (
-                              <div key={childTalk.id} className="p-3 bg-muted/30 rounded-md">
-                                <div className="font-medium">
-                                  {childTalk.url ? (
-                                    <a 
-                                      href={childTalk.url} 
-                                      className="underline hover:text-blue-purple-500"
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                    >
-                                      {childTalk.title}
-                                    </a>
-                                  ) : (
-                                    childTalk.title
-                                  )}
-                                </div>
-                                
-                                {childTalk.speaker && (
-                                  <div className="flex items-center gap-2 mt-2 text-sm">
-                                    <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                                      {childTalk.speakerImage ? (
-                                        <img
-                                          src={childTalk.speakerImage || "/placeholder.svg"}
-                                          alt={childTalk.speaker}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <span className="text-xs">{childTalk.speaker.charAt(0)}</span>
-                                      )}
-                                    </div>
-                                    <span>{childTalk.speaker}</span>
-                                  </div>
-                                )}
-                                
-                                <div className="flex justify-end mt-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleBookmark(childTalk)}
-                                    className="h-8 px-2"
-                                  >
-                                    <Bookmark 
-                                      className={isBookmarked(childTalk) ? "fill-current text-yellow-500" : ""} 
-                                      size={16} 
-                                    />
-                                    <span className="ml-1 text-xs">
-                                      {isBookmarked(childTalk) ? "ブックマーク解除" : "ブックマーク"}
-                                    </span>
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
-                )}
               </div>
             </CardContent>
             <CardFooter className="pt-2">

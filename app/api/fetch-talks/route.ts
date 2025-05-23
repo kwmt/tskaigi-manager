@@ -24,6 +24,199 @@ export async function GET() {
   }
 }
 
+// セル内の複数トークを抽出する関数
+function extractTalksFromCell(
+  $: cheerio.CheerioAPI,
+  cell: any,
+  timeText: string,
+  trackName: string,
+  day: string,
+  gridIndex: number,
+  cellIndex: number
+): Talk[] {
+  const talks: Talk[] = []
+  const dayValue: "day1" | "day2" = day === "1" ? "day1" : "day2"
+
+  // ハッシュタグを取得
+  let hashtag = ""
+  if (trackName.includes("トグル")) {
+    hashtag = "#tskaigi_toggle"
+  } else if (trackName.includes("アセンド")) {
+    hashtag = "#tskaigi_ascend"
+  } else if (trackName.includes("レバレジーズ")) {
+    hashtag = "#tskaigi_leverages"
+  }
+
+  // トークタイプを取得
+  let talkType: Talk["type"] = "セッション"
+  const typeElement = $(cell).find(".inline-block").first()
+  if (typeElement.length > 0) {
+    const typeText = typeElement.text().trim()
+    if (
+      typeText === "セッション" ||
+      typeText === "招待講演" ||
+      typeText === "オープニング" ||
+      typeText === "クローズ" ||
+      typeText === "休憩" ||
+      typeText === "ランチ配布" ||
+      typeText === "スポンサーLT" ||
+      typeText === "LT"
+    ) {
+      talkType = typeText === "LT" ? "スポンサーLT" : typeText
+    }
+  }
+
+  // 複数のセレクタパターンを試して複数トークを検出
+  let talkElements: cheerio.Cheerio<any> = $()
+  
+  // パターン1: gap-5クラスで区切られている場合
+  const multiTalkContainer = $(cell).find(".flex.flex-col.gap-5")
+  if (multiTalkContainer.length > 0) {
+    talkElements = multiTalkContainer.find("> .flex.flex-col.gap-1")
+  }
+  
+  // パターン2: 直接的な子要素でトークが分かれている場合
+  if (talkElements.length === 0) {
+    const directTalkElements = $(cell).find("a").parent()
+    if (directTalkElements.length > 1) {
+      talkElements = directTalkElements
+    }
+  }
+  
+  // パターン3: リンク要素が複数ある場合
+  if (talkElements.length === 0) {
+    const linkElements = $(cell).find("a")
+    if (linkElements.length > 1) {
+      talkElements = linkElements
+    }
+  }
+
+  if (talkElements.length > 0) {
+    // 複数トークがある場合
+    talkElements.each((talkIndex, talkElement) => {
+      const talk = extractSingleTalk($, talkElement, timeText, trackName, hashtag, talkType, dayValue, gridIndex, cellIndex, talkIndex)
+      if (talk) {
+        talks.push(talk)
+      }
+    })
+  } else {
+    // 単一トークの場合
+    const talk = extractSingleTalk($, cell, timeText, trackName, hashtag, talkType, dayValue, gridIndex, cellIndex, 0)
+    if (talk) {
+      talks.push(talk)
+    }
+  }
+
+  return talks
+}
+
+// 単一トークを抽出する関数
+function extractSingleTalk(
+  $: cheerio.CheerioAPI,
+  element: any,
+  timeText: string,
+  trackName: string,
+  hashtag: string,
+  talkType: Talk["type"],
+  dayValue: "day1" | "day2",
+  gridIndex: number,
+  cellIndex: number,
+  talkIndex: number
+): Talk | null {
+  // トークタイトルとURLを取得
+  let titleAnchor = $(element).find("a").first()
+  let titleElement = titleAnchor.find("p").first()
+  
+  // 要素自体がリンクの場合
+  if ($(element).is("a")) {
+    titleAnchor = $(element)
+    titleElement = titleAnchor.find("p").first()
+  }
+  
+  let talkTitle = ""
+  if (titleElement.length > 0) {
+    talkTitle = titleElement.text().trim()
+  } else if (titleAnchor.length > 0) {
+    talkTitle = titleAnchor.text().trim()
+  } else {
+    talkTitle = $(element).find(".text-center").text().trim()
+  }
+  
+  // 空のセルやヘッダーをスキップ
+  if (
+    !talkTitle ||
+    talkTitle === "" ||
+    talkTitle === "トグルルーム" ||
+    talkTitle === "アセンドトラック" ||
+    talkTitle === "レバレジーズトラック" ||
+    talkTitle === "サテライト" ||
+    talkTitle === "クローズ"
+  ) {
+    return null
+  }
+
+  // リンクURLを取得
+  let talkUrl: string | undefined = undefined
+  if (titleAnchor.length > 0) {
+    talkUrl = titleAnchor.attr("href")
+    // 相対URLの場合は絶対URLに変換
+    if (talkUrl && !talkUrl.startsWith("http")) {
+      talkUrl = `https://2025.tskaigi.org${talkUrl.startsWith("/") ? "" : "/"}${talkUrl}`
+    }
+  }
+
+  // 話者情報を取得（複数のセレクタパターンを試す）
+  let speaker = ""
+  let speakerImage: string | undefined = undefined
+  
+  // パターン1: 標準的な構造
+  const speakerElement = $(element).find(".flex.items-center.gap-2 span").first()
+  if (speakerElement.length > 0) {
+    speaker = speakerElement.text().trim()
+  }
+  
+  // パターン2: 親要素から検索
+  if (!speaker) {
+    const parentSpeakerElement = $(element).parent().find(".flex.items-center.gap-2 span").first()
+    if (parentSpeakerElement.length > 0) {
+      speaker = parentSpeakerElement.text().trim()
+    }
+  }
+
+  // 話者画像のURLを取得
+  const speakerImageElement = $(element).find(".flex.items-center.gap-2 img").first()
+  if (speakerImageElement.length > 0) {
+    speakerImage = speakerImageElement.attr("src")
+  } else {
+    // 親要素から検索
+    const parentSpeakerImageElement = $(element).parent().find(".flex.items-center.gap-2 img").first()
+    if (parentSpeakerImageElement.length > 0) {
+      speakerImage = parentSpeakerImageElement.attr("src")
+    }
+  }
+  
+  // 相対URLの場合は絶対URLに変換
+  if (speakerImage && !speakerImage.startsWith("http")) {
+    speakerImage = `https://2025.tskaigi.org${speakerImage.startsWith("/") ? "" : "/"}${speakerImage}`
+  }
+
+  // トークIDを生成
+  const id = `day${dayValue.slice(-1)}-${gridIndex}-${cellIndex}-${talkIndex}`
+
+  return {
+    id,
+    day: dayValue,
+    title: talkTitle,
+    speaker: speaker || undefined,
+    speakerImage: speakerImage,
+    time: timeText,
+    track: trackName || undefined,
+    type: talkType,
+    hashtag: hashtag || undefined,
+    url: talkUrl,
+  }
+}
+
 // Playwrightを使用してHTMLを取得する関数
 export async function fetchHtml(url: string): Promise<string> {
   let options: LaunchOptions = {
@@ -102,103 +295,9 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
                 trackName = trackElement.text().trim()
               }
 
-              // トークタイトルとURLを取得
-              const titleAnchor = $(cell).find("a")
-              const titleElement = titleAnchor.find("p")
-              const talkTitle = titleElement.length > 0 
-                ? titleElement.text().trim() 
-                : $(cell).find(".text-center").text().trim() // タイトルがない場合（休憩など）
-              
-              // リンクURLを取得
-              let talkUrl: string | undefined = undefined
-              if (titleAnchor.length > 0) {
-                talkUrl = titleAnchor.attr("href")
-                // 相対URLの場合は絶対URLに変換
-                if (talkUrl && !talkUrl.startsWith("http")) {
-                  talkUrl = `https://2025.tskaigi.org${talkUrl.startsWith("/") ? "" : "/"}${talkUrl}`
-                }
-              }
-
-              // 空のセルやヘッダーをスキップ
-              if (
-                !talkTitle ||
-                talkTitle === "" ||
-                talkTitle === "トグルルーム" ||
-                talkTitle === "アセンドトラック" ||
-                talkTitle === "レバレジーズトラック" ||
-                talkTitle === "サテライト" ||
-                talkTitle === "クローズ"
-              ) {
-                return
-              }
-
-              // トークタイプを判定
-              let talkType: Talk["type"] = "セッション"
-              const typeElement = $(cell).find(".inline-block")
-              if (typeElement.length > 0) {
-                const typeText = typeElement.text().trim()
-                // 型を確認して割り当て
-                if (
-                  typeText === "セッション" ||
-                  typeText === "招待講演" ||
-                  typeText === "オープニング" ||
-                  typeText === "クローズ" ||
-                  typeText === "休憩" ||
-                  typeText === "ランチ配布" ||
-                  typeText === "スポンサーLT"
-                ) {
-                  talkType = typeText
-                }
-              } else if (talkTitle.includes("オープニング")) {
-                talkType = "オープニング"
-              } else if (talkTitle.includes("クローズ")) {
-                talkType = "クローズ"
-              } else if (talkTitle.includes("休憩")) {
-                talkType = "休憩"
-              } else if (talkTitle.includes("ランチ")) {
-                talkType = "ランチ配布"
-              }
-
-              // 話者情報を取得
-              const speakerElement = $(cell).find(".flex.items-center.gap-2 span")
-              const speaker = speakerElement.text().trim()
-
-              // ハッシュタグを取得（現在の構造ではハッシュタグが直接見つからないため、トラック名から推測）
-              let hashtag = ""
-              if (trackName.includes("トグル")) {
-                hashtag = "#tskaigi_toggle"
-              } else if (trackName.includes("アセンド")) {
-                hashtag = "#tskaigi_ascend"
-              } else if (trackName.includes("レバレジーズ")) {
-                hashtag = "#tskaigi_leverages"
-              }
-
-              // 話者画像のURLを取得
-              const speakerImageElement = $(cell).find(".flex.items-center.gap-2 img")
-              let speakerImage = speakerImageElement.length > 0 ? speakerImageElement.attr("src") : undefined
-              // 相対URLの場合は絶対URLに変換
-              if (speakerImage && !speakerImage.startsWith("http")) {
-                speakerImage = `https://2025.tskaigi.org${speakerImage.startsWith("/") ? "" : "/"}${speakerImage}`
-              }
-
-              // トークIDを生成
-              const id = `day${day}-${gridIndex}-${cellIndex}`
-
-              // dayの型を確認
-              const dayValue: "day1" | "day2" = day === "1" ? "day1" : "day2"
-
-              rawTalks.push({
-                id,
-                day: dayValue,
-                title: talkTitle,
-                speaker: speaker || undefined,
-                speakerImage: speakerImage,
-                time: timeText,
-                track: trackName || undefined,
-                type: talkType,
-                hashtag: hashtag || undefined,
-                url: talkUrl,
-              })
+              // セル内の複数トークを検出
+              const talksInCell = extractTalksFromCell($, cell, timeText, trackName, day, gridIndex, cellIndex)
+              rawTalks.push(...talksInCell)
             } catch (cellError) {
               console.error(`Error processing cell at index ${cellIndex}:`, cellError)
               // 個別のセルのエラーはスキップして続行
@@ -210,53 +309,8 @@ export async function fetchTalksForDay(day: string): Promise<Talk[]> {
       }
     })
 
-    // 親トークと子トークの関係を構築
-    const processedTalks: Talk[] = []
-    
-    // 時間帯とトークタイプでグループ化
-    const talkGroups: { [key: string]: Talk[] } = {}
-    
-    rawTalks.forEach(talk => {
-      const groupKey = `${talk.time}-${talk.type}`
-      if (!talkGroups[groupKey]) {
-        talkGroups[groupKey] = []
-      }
-      talkGroups[groupKey].push(talk)
-    })
-    
-    // 各グループを処理
-    Object.values(talkGroups).forEach(group => {
-      console.log("Processing group:", group)
-      // グループ内のトークが1つだけの場合はそのまま追加
-      if (group.length === 1) {
-        processedTalks.push(group[0])
-        return
-      }
-      
-      // グループ内のトークが複数ある場合
-      // 特定のトークタイプ（スポンサーLTなど）の場合は親子関係を構築
-      if (
-        group[0].type === "スポンサーLT" || 
-        // 必要に応じて他のタイプも追加
-        (group.length > 1 && group.every(t => t.track === group[0].track))
-      ) {
-        const parentTalk = { ...group[0] }
-        const childTalks = group.slice(1).map(talk => ({
-          ...talk,
-          parentId: parentTalk.id
-        }))
-        
-        parentTalk.childTalks = childTalks
-        processedTalks.push(parentTalk)
-      } else {
-        // それ以外の場合は個別のトークとして追加
-        group.forEach(talk => {
-          processedTalks.push(talk)
-        })
-      }
-    })
-
-    return processedTalks
+    // すべてのトークを同じレベルで表示（親子関係を構築しない）
+    return rawTalks
   } catch (error) {
     console.error("Error in fetchTalksForDay:", error)
     // エラーが発生した場合は空の配列を返す
