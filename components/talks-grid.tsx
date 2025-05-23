@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Bookmark, Loader2, AlertCircle } from "lucide-react"
+import { Bookmark, Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { day1Talks, day2Talks, type Talk } from "@/lib/talks-data"
 import { useBookmarks } from "@/hooks/use-bookmarks"
-import { fetchTalks } from "@/lib/api"
+import { fetchTalks, clearTalksCache } from "@/lib/api"
 
 interface TalksGridProps {
   day: "day1" | "day2"
@@ -50,6 +50,8 @@ export function TalksGrid({ day }: TalksGridProps) {
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false)
   // 現在時刻の状態を追加（表示を更新するため）
   const [currentTime, setCurrentTime] = useState(new Date())
+  // キャッシュクリア中のローディング状態
+  const [isClearingCache, setIsClearingCache] = useState(false)
 
   // 1分ごとに現在時刻を更新するためのeffect
   useEffect(() => {
@@ -61,6 +63,33 @@ export function TalksGrid({ day }: TalksGridProps) {
     // クリーンアップ関数
     return () => clearInterval(timer);
   }, []);
+
+  // キャッシュをクリアして新しいデータを取得する関数
+  const handleClearCache = async () => {
+    try {
+      setIsClearingCache(true)
+      // キャッシュをクリア
+      clearTalksCache()
+      // 新しいデータを取得
+      const data = await fetchTalks()
+      if (day === "day1" && data.day1.length > 0) {
+        setTalks(data.day1)
+      } else if (day === "day2" && data.day2.length > 0) {
+        setTalks(data.day2)
+      } else {
+        throw new Error("No talks found for the selected day.")
+      }
+      // エラーがあれば消去
+      setError(null)
+    } catch (err) {
+      console.error("Failed to fetch talks after clearing cache:", err)
+      setError("キャッシュクリア後のデータ取得に失敗しました。")
+      // フォールバック: エラー時はハードコードされたデータを使用
+      setTalks(day === "day1" ? day1Talks : day2Talks)
+    } finally {
+      setIsClearingCache(false)
+    }
+  }
 
   useEffect(() => {
     async function loadTalks() {
@@ -116,13 +145,26 @@ export function TalksGrid({ day }: TalksGridProps) {
   if (showBookmarksOnly && filteredTalks.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-end space-x-2">
-          <Switch
-            id="show-bookmarks"
-            checked={showBookmarksOnly}
-            onCheckedChange={setShowBookmarksOnly}
-          />
-          <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearCache}
+            className="flex items-center gap-1"
+            disabled={isClearingCache}
+          >
+            <RefreshCw size={16} />
+            <span>キャッシュをクリア</span>
+          </Button>
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="show-bookmarks"
+              checked={showBookmarksOnly}
+              onCheckedChange={setShowBookmarksOnly}
+            />
+            <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
+          </div>
         </div>
         
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -136,15 +178,38 @@ export function TalksGrid({ day }: TalksGridProps) {
     )
   }
 
+  // キャッシュクリア中の場合はローディング表示
+  if (isClearingCache) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p>キャッシュをクリアして最新データを取得中...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end space-x-2">
-        <Switch
-          id="show-bookmarks"
-          checked={showBookmarksOnly}
-          onCheckedChange={setShowBookmarksOnly}
-        />
-        <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleClearCache}
+          className="flex items-center gap-1"
+          disabled={isClearingCache}
+        >
+          <RefreshCw size={16} />
+          <span>キャッシュをクリア</span>
+        </Button>
+        
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="show-bookmarks"
+            checked={showBookmarksOnly}
+            onCheckedChange={setShowBookmarksOnly}
+          />
+          <Label htmlFor="show-bookmarks">ブックマークのみ表示</Label>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

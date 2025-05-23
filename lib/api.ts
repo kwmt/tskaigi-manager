@@ -12,6 +12,21 @@ interface TalksCache {
   timestamp: number;
 }
 
+// キャッシュをクリアする関数
+export function clearTalksCache(): boolean {
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(TALKS_CACHE_KEY)
+      console.log("Talks cache cleared successfully")
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error("Error clearing talks cache:", error)
+    return false
+  }
+}
+
 export async function fetchTalks(): Promise<{ day1: Talk[]; day2: Talk[] }> {
   // クライアントサイドでのみローカルストレージを使用
   if (typeof window !== "undefined") {
