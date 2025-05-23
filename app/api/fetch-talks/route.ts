@@ -1,16 +1,17 @@
-import { NextResponse } from "next/server"
 import * as cheerio from "cheerio"
 import type { Talk } from "@/lib/talks-data"
-import { chromium } from 'playwright'
+import { chromium } from 'playwright-core'
+import chromiumPath from '@sparticuz/chromium'
 
 export async function GET() {
   try {
+    console.log("Fetching talks data...")
     // Day 1のデータを取得
     const day1Data = await fetchTalksForDay("1")
     // Day 2のデータを取得
     const day2Data = await fetchTalksForDay("2")
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       data: {
         day1: day1Data,
@@ -19,14 +20,16 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Error fetching talks:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch talks data" }, { status: 500 })
+    return Response.json({ success: false, error: "Failed to fetch talks data" }, { status: 500 })
   }
 }
 
 // Playwrightを使用してHTMLを取得する関数
 export async function fetchHtml(url: string): Promise<string> {
   const browser = await chromium.launch({
-    headless: true // ヘッドレスモードで実行
+    headless: true, // ヘッドレスモードで実行
+    args: chromiumPath.args, 
+    executablePath: await chromiumPath.executablePath()
   });
   
   try {

@@ -1,8 +1,17 @@
 import { fetchTalksForDay } from '../route'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
+// @sparticuz/chromiumのモックを追加
+vi.mock('@sparticuz/chromium', () => {
+  return {
+    default: {
+      executablePath: '/path/to/chromium'
+    }
+  };
+});
+
 // Playwrightのモックを追加
-vi.mock('playwright', () => {
+vi.mock('playwright-core', () => {
   return {
     chromium: {
       launch: vi.fn().mockImplementation(() => {
